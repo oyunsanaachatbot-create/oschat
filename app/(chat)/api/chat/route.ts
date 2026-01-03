@@ -77,11 +77,8 @@ export async function POST(request: Request) {
     const { id, message, messages, selectedChatModel, selectedVisibilityType } =
       requestBody;
 
-    const session = await auth();
-
-    if (!session?.user) {
-      return new ChatSDKError("unauthorized:chat").toResponse();
-    }
+    // TEMP: auth-ийг түр алгасна (SDK template эвдэхгүй)
+const session = { user: { id: "temp-user" } };
 
     const userType: UserType = session.user.type;
 

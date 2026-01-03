@@ -78,7 +78,8 @@ export async function POST(request: Request) {
       requestBody;
 
     // TEMP: auth-ийг түр алгасна (SDK template эвдэхгүй)
-const session = { user: { id: "temp-user" } };
+const session = { user: { id: "temp-user", type: "free", email: "temp@local" } } as any;
+
 
     const userType: UserType = session.user.type;
 

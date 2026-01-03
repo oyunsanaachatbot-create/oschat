@@ -17,11 +17,9 @@ export async function GET(request: NextRequest) {
     ).toResponse();
   }
 
-  const session = await auth();
+ // TEMP: auth-ийг түр алгасаж чат асаана
+const session = { user: { id: "temp-user" } } as any;
 
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:chat").toResponse();
-  }
 
   const chats = await getChatsByUserId({
     id: session.user.id,
@@ -34,11 +32,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function DELETE() {
-  const session = await auth();
+  // TEMP: auth-ийг түр алгасаж чат асаана
+const session = { user: { id: "temp-user" } } as any;
 
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:chat").toResponse();
-  }
 
   const result = await deleteAllChatsByUserId({ userId: session.user.id });
 

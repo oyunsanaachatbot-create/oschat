@@ -3,20 +3,10 @@ import { z } from "zod";
 import {
   artifactKinds,
   documentHandlersByArtifactKind,
+  type AppSession,
 } from "@/lib/artifacts/server";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
-
-/**
- * ✅ Supabase-only app session
- * - guest үед user undefined байж болно
- * - login үед user.id байна
- */
-export type AppSession = {
-  user?: {
-    id?: string;
-  };
-};
 
 type CreateDocumentProps = {
   session: AppSession;
@@ -26,7 +16,7 @@ type CreateDocumentProps = {
 export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
   tool({
     description:
-      "Create a document for writing or content creation. Generates an artifact based on title and kind.",
+      "Create a document for writing/content creation. Generates an artifact (text/code/sheet).",
     inputSchema: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
@@ -34,54 +24,22 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
     execute: async ({ title, kind }) => {
       const id = generateUUID();
 
-      // ---- stream metadata to UI ----
-      dataStream.write({
-        type: "data-kind",
-        data: kind,
-        transient: true,
-      });
+      dataStream.write({ type: "data-kind", data: kind, transient: true });
+      dataStream.write({ type: "data-id", data: id, transient: true });
+      dataStream.write({ type: "data-title", data: title, transient: true });
+      dataStream.write({ type: "data-clear", data: null, transient: true });
 
-      dataStream.write({
-        type: "data-id",
-        data: id,
-        transient: true,
-      });
+      const handler = documentHandlersByArtifactKind.find((h) => h.kind === kind);
+      if (!handler) throw new Error(`No document handler found for kind: ${kind}`);
 
-      dataStream.write({
-        type: "data-title",
-        data: title,
-        transient: true,
-      });
-
-      dataStream.write({
-        type: "data-clear",
-        data: null,
-        transient: true,
-      });
-
-      // ---- resolve handler ----
-      const documentHandler = documentHandlersByArtifactKind.find(
-        (h) => h.kind === kind
-      );
-
-      if (!documentHandler) {
-        throw new Error(`No document handler found for kind: ${kind}`);
-      }
-
-      // ---- create document ----
-      await documentHandler.onCreateDocument({
+      await handler.onCreateDocument({
         id,
         title,
         dataStream,
         session,
       });
 
-      // ---- signal completion ----
-      dataStream.write({
-        type: "data-finish",
-        data: null,
-        transient: true,
-      });
+      dataStream.write({ type: "data-finish", data: null, transient: true });
 
       return {
         id,

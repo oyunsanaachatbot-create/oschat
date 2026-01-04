@@ -7,11 +7,7 @@ import { useActionState, useEffect, useState } from "react";
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
-import {
-  type LoginActionState,
-  login,
-  signInWithGoogle,
-} from "../actions";
+import { type LoginActionState, login, signInWithGoogle } from "../actions";
 
 export default function Page() {
   const router = useRouter();
@@ -19,9 +15,10 @@ export default function Page() {
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
 
-  const [state, formAction] = useActionState<LoginActionState, FormData>(login, {
-    status: "idle",
-  });
+  const [state, formAction] = useActionState<LoginActionState, FormData>(
+    login,
+    { status: "idle" }
+  );
 
   useEffect(() => {
     if (state.status === "failed") {
@@ -30,9 +27,7 @@ export default function Page() {
       toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
       setIsSuccessful(true);
-      // Supabase cookie session server-side дээр set болно.
       router.refresh();
-      router.push("/"); // хүсвэл /chat гэж сольж болно
     }
   }, [state.status, router]);
 
@@ -42,10 +37,12 @@ export default function Page() {
   };
 
   const handleGoogle = async () => {
-    // server action нь OAuth redirect URL буцаана
     const res = await signInWithGoogle();
-    if (res?.url) window.location.href = res.url;
-    else toast({ type: "error", description: "Google sign-in failed!" });
+    if (res.ok && res.url) {
+      window.location.href = res.url;
+    } else {
+      toast({ type: "error", description: "Google sign-in failed!" });
+    }
   };
 
   return (
@@ -59,27 +56,16 @@ export default function Page() {
         </div>
 
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          {/* UI дээр чинь “Continue with Google” товч байгаа — яг тэрийг ажиллуулж өгнө */}
+          {/* Google button */}
           <button
             type="button"
+            className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm"
             onClick={handleGoogle}
-            className="w-full rounded-xl border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground"
           >
             Continue with Google
           </button>
 
-          {/* “OR” шугам чинь AuthForm дотор байгаа бол хэвээрээ үлдэнэ */}
-
           <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
-
-          <div className="mt-3 text-center">
-            <Link
-              className="text-sm text-gray-600 hover:underline dark:text-zinc-400"
-              href="/forgot-password"
-            >
-              Forgot your password?
-            </Link>
-          </div>
 
           <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
             {"Don't have an account? "}
@@ -90,6 +76,15 @@ export default function Page() {
               Sign up
             </Link>
             {" for free."}
+          </p>
+
+          <p className="mt-2 text-center text-gray-600 text-sm dark:text-zinc-400">
+            <Link
+              className="font-medium hover:underline"
+              href="/forgot-password"
+            >
+              Forgot your password?
+            </Link>
           </p>
         </AuthForm>
       </div>

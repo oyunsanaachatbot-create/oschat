@@ -68,7 +68,7 @@ type UserType = keyof typeof entitlementsByUserType;
 type AppSession = { user: { id: string; type: UserType } };
 
 async function getAppSession(): Promise<AppSession | null> {
-  const supabase = createSupabaseServerClient();
+ const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) return null;
 

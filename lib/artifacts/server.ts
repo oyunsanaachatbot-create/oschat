@@ -1,3 +1,4 @@
+// /lib/artifacts/server.ts
 import type { UIMessageStreamWriter } from "ai";
 
 import { codeDocumentHandler } from "@/artifacts/code/server";
@@ -8,7 +9,7 @@ import { saveDocument } from "../db/queries";
 import type { Document } from "../db/schema";
 import type { ChatMessage } from "../types";
 
-// Supabase-only minimal session type (NextAuth байхгүй)
+// ✅ Supabase-only minimal session type
 export type AppSession = {
   user?: {
     id?: string;
@@ -50,29 +51,33 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
 }): DocumentHandler<T> {
   return {
     kind: config.kind,
+
     onCreateDocument: async (args) => {
       const draftContent = await config.onCreateDocument(args);
 
-      if (args.session?.user?.id) {
+      const userId = args.session?.user?.id;
+      if (userId) {
         await saveDocument({
           id: args.id,
           title: args.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
+          userId,
         });
       }
     },
+
     onUpdateDocument: async (args) => {
       const draftContent = await config.onUpdateDocument(args);
 
-      if (args.session?.user?.id) {
+      const userId = args.session?.user?.id;
+      if (userId) {
         await saveDocument({
           id: args.document.id,
           title: args.document.title,
           content: draftContent,
           kind: config.kind,
-          userId: args.session.user.id,
+          userId,
         });
       }
     },

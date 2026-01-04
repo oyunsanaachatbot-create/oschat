@@ -2,11 +2,12 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession } from "next-auth/react";
 import { useActionState, useEffect, useState } from "react";
+
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
+import { createClient } from "@/lib/supabase/client";
 import { type RegisterActionState, register } from "../actions";
 
 export default function Page() {
@@ -14,17 +15,14 @@ export default function Page() {
 
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
   const [state, formAction] = useActionState<RegisterActionState, FormData>(
     register,
-    {
-      status: "idle",
-    }
+    { status: "idle" }
   );
 
-  const { update: updateSession } = useSession();
-
-  // biome-ignore lint/correctness/useExhaustiveDependencies: router and updateSession are stable refs
+  // biome-ignore lint/correctness/useExhaustiveDependencies: router is stable ref
   useEffect(() => {
     if (state.status === "user_exists") {
       toast({ type: "error", description: "Account already exists!" });
@@ -37,9 +35,7 @@ export default function Page() {
       });
     } else if (state.status === "success") {
       toast({ type: "success", description: "Account created successfully!" });
-
       setIsSuccessful(true);
-      updateSession();
       router.refresh();
     }
   }, [state.status]);
@@ -47,6 +43,38 @@ export default function Page() {
   const handleSubmit = (formData: FormData) => {
     setEmail(formData.get("email") as string);
     formAction(formData);
+  };
+
+  const handleGoogleSignUp = async () => {
+    try {
+      setIsGoogleLoading(true);
+
+      const supabase = createClient();
+      const origin =
+        typeof window !== "undefined" ? window.location.origin : "";
+
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${origin}/auth/callback`,
+        },
+      });
+
+      if (error) {
+        toast({
+          type: "error",
+          description: error.message || "Google sign-up failed.",
+        });
+        setIsGoogleLoading(false);
+      }
+      // Амжилттай бол redirect хийгдэнэ
+    } catch {
+      toast({
+        type: "error",
+        description: "Google sign-up failed.",
+      });
+      setIsGoogleLoading(false);
+    }
   };
 
   return (
@@ -58,8 +86,23 @@ export default function Page() {
             Create an account with your email and password
           </p>
         </div>
+
         <AuthForm action={handleSubmit} defaultEmail={email}>
+          {/* Email+password submit (хэвээр) */}
           <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
+
+          {/* Google button — яг адил хэмжээ/стиль */}
+          <SubmitButton
+            isSuccessful={false}
+            onClick={(e) => {
+              e.preventDefault();
+              handleGoogleSignUp();
+            }}
+            disabled={isGoogleLoading}
+          >
+            {isGoogleLoading ? "Signing up..." : "Continue with Google"}
+          </SubmitButton>
+
           <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
             {"Already have an account? "}
             <Link

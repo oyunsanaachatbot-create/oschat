@@ -4,22 +4,26 @@ type Entitlements = {
   maxMessagesPerDay: number;
 };
 
-export const entitlementsByUserType: Record<UserType, Entitlements> = {
-  /*
+// ✅ ямар UserType ч байсан map ажиллана
+export const entitlementsByUserType: Partial<Record<UserType, Entitlements>> = {
+  /**
    * For users without an account
    */
   guest: {
     maxMessagesPerDay: 20,
   },
 
-  /*
+  /**
    * For users with an account
    */
-  regular: {
-    maxMessagesPerDay: 50,
-  },
-
-  /*
-   * TODO: For users with an account and a paid membership
-   */
+  // "regular" гэдэг нь таны UserType-д байхгүй тул түр авав.
 };
+
+// ✅ ашиглахад helper (хэрвээ хаа нэг газар entitlementsByUserType[user.type] гэж авдаг бол)
+export function getEntitlements(userType?: UserType): Entitlements {
+  return (
+    (userType && entitlementsByUserType[userType]) ?? {
+      maxMessagesPerDay: 20,
+    }
+  );
+}

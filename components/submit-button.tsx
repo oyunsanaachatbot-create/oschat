@@ -15,6 +15,7 @@ export function SubmitButton({
   isSuccessful,
   disabled,
   type,
+  className,
   ...props
 }: SubmitButtonProps) {
   const { pending } = useFormStatus();
@@ -24,10 +25,9 @@ export function SubmitButton({
   return (
     <Button
       {...props}
-      className={["relative", props.className].filter(Boolean).join(" ")}
+      className={["relative", className].filter(Boolean).join(" ")}
       aria-disabled={isDisabled}
       disabled={isDisabled}
-      // default нь submit, гэхдээ Google дээр type="button" гэж override хийж болно
       type={type ?? (pending ? "button" : "submit")}
     >
       {children}

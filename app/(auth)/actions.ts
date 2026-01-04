@@ -22,7 +22,8 @@ export const login = async (
       password: formData.get("password"),
     });
 
-    const supabase = createSupabaseServerClient();
+ const supabase = await createSupabaseServerClient();
+
     const { error } = await supabase.auth.signInWithPassword({
       email: validatedData.email,
       password: validatedData.password,

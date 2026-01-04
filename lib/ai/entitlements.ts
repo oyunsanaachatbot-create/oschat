@@ -1,4 +1,3 @@
-// /lib/ai/entitlements.ts
 import type { UserType } from "@/app/(auth)/auth";
 
 type Entitlements = {
@@ -9,8 +8,3 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
   guest: { maxMessagesPerDay: 20 },
   regular: { maxMessagesPerDay: 50 },
 };
-
-// ✅ route.ts дээр "getEntitlements" гэж импортлох шаардлага гарвал
-export function getEntitlements(userType: UserType): Entitlements {
-  return entitlementsByUserType[userType] ?? entitlementsByUserType.guest;
-}

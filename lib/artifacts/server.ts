@@ -8,7 +8,7 @@ import { saveDocument } from "../db/queries";
 import type { Document } from "../db/schema";
 import type { ChatMessage } from "../types";
 
-// ✅ NextAuth байхгүй тул минимал session type
+// Supabase-only minimal session type (NextAuth байхгүй)
 export type AppSession = {
   user?: {
     id?: string;
@@ -50,33 +50,29 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
 }): DocumentHandler<T> {
   return {
     kind: config.kind,
-
     onCreateDocument: async (args) => {
       const draftContent = await config.onCreateDocument(args);
 
-      const userId = args.session?.user?.id;
-      if (userId) {
+      if (args.session?.user?.id) {
         await saveDocument({
           id: args.id,
           title: args.title,
           content: draftContent,
           kind: config.kind,
-          userId,
+          userId: args.session.user.id,
         });
       }
     },
-
     onUpdateDocument: async (args) => {
       const draftContent = await config.onUpdateDocument(args);
 
-      const userId = args.session?.user?.id;
-      if (userId) {
+      if (args.session?.user?.id) {
         await saveDocument({
           id: args.document.id,
           title: args.document.title,
           content: draftContent,
           kind: config.kind,
-          userId,
+          userId: args.session.user.id,
         });
       }
     },

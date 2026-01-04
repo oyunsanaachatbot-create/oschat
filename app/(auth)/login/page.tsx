@@ -2,60 +2,50 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useState } from "react";
 
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
-import {
-  type LoginActionState,
-  login,
-  signInWithGoogle,
-  sendPasswordReset,
-} from "../actions";
+import { createSupabaseBrowserClient } from "@/lib/supabase/browser";
 
 export default function Page() {
   const router = useRouter();
+  const supabase = createSupabaseBrowserClient();
 
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
 
-  const [state, formAction] = useActionState<LoginActionState, FormData>(
-    login,
-    { status: "idle" }
-  );
+  const handleSubmit = async (formData: FormData) => {
+    const emailValue = String(formData.get("email") ?? "");
+    const passwordValue = String(formData.get("password") ?? "");
+    setEmail(emailValue);
 
-  useEffect(() => {
-    if (state.status === "failed") {
-      toast({ type: "error", description: "Invalid credentials!" });
-    } else if (state.status === "invalid_data") {
-      toast({ type: "error", description: "Failed validating your submission!" });
-    } else if (state.status === "success") {
-      setIsSuccessful(true);
-      router.refresh();
-      router.push("/");
+    const { error } = await supabase.auth.signInWithPassword({
+      email: emailValue,
+      password: passwordValue,
+    });
+
+    if (error) {
+      toast({ type: "error", description: error.message || "Invalid credentials!" });
+      return;
     }
-  }, [state.status, router]);
 
-  const handleSubmit = (formData: FormData) => {
-    setEmail((formData.get("email") as string) ?? "");
-    formAction(formData);
+    setIsSuccessful(true);
+    router.refresh();
+    router.push("/");
   };
 
   const handleGoogle = async () => {
-    const res = await signInWithGoogle();
-    if (res.url) window.location.href = res.url;
-    else toast({ type: "error", description: "Google sign-in failed!" });
-  };
+    const origin = window.location.origin;
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${origin}/auth/callback` },
+    });
 
-  const handleForgot = async () => {
-    if (!email) {
-      toast({ type: "error", description: "Email address-аар эхлээд бөглө!" });
-      return;
+    if (error) {
+      toast({ type: "error", description: error.message || "Google sign-in failed!" });
     }
-    const res = await sendPasswordReset(email);
-    if (res.ok) toast({ type: "success", description: "Reset link илгээлээ!" });
-    else toast({ type: "error", description: "Reset link илгээж чадсангүй!" });
   };
 
   return (
@@ -72,27 +62,22 @@ export default function Page() {
           <button
             type="button"
             onClick={handleGoogle}
-            className="w-full rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50 dark:hover:bg-zinc-900"
+            className="w-full rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent"
           >
             Continue with Google
           </button>
 
           <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
 
-          <button
-            type="button"
-            onClick={handleForgot}
-            className="mx-auto mt-2 text-center text-gray-600 text-sm hover:underline dark:text-zinc-400"
-          >
-            Forgot your password?
-          </button>
+          <div className="text-center text-sm">
+            <Link className="text-gray-600 hover:underline dark:text-zinc-400" href="/forgot-password">
+              Forgot your password?
+            </Link>
+          </div>
 
           <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
             {"Don't have an account? "}
-            <Link
-              className="font-semibold text-gray-800 hover:underline dark:text-zinc-200"
-              href="/register"
-            >
+            <Link className="font-semibold text-gray-800 hover:underline dark:text-zinc-200" href="/register">
               Sign up
             </Link>
             {" for free."}

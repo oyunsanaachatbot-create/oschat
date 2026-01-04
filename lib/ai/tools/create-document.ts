@@ -7,12 +7,15 @@ import {
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 
-// ✅ NextAuth Session-ийн оронд минимал app session type
+/**
+ * ✅ Supabase-only app session
+ * - guest үед user undefined байж болно
+ * - login үед user.id байна
+ */
 export type AppSession = {
-  user: {
-    id: string;
+  user?: {
+    id?: string;
   };
-  // хэрэгтэй бол дараа нь нэмнэ (email/type гэх мэт)
 };
 
 type CreateDocumentProps = {
@@ -23,7 +26,7 @@ type CreateDocumentProps = {
 export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
   tool({
     description:
-      "Create a document for a writing or content creation activities. This tool will call other functions that will generate the contents of the document based on the title and kind.",
+      "Create a document for writing or content creation. Generates an artifact based on title and kind.",
     inputSchema: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
@@ -31,6 +34,7 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
     execute: async ({ title, kind }) => {
       const id = generateUUID();
 
+      // ---- stream metadata to UI ----
       dataStream.write({
         type: "data-kind",
         data: kind,
@@ -55,15 +59,16 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         transient: true,
       });
 
+      // ---- resolve handler ----
       const documentHandler = documentHandlersByArtifactKind.find(
-        (documentHandlerByArtifactKind) =>
-          documentHandlerByArtifactKind.kind === kind
+        (h) => h.kind === kind
       );
 
       if (!documentHandler) {
         throw new Error(`No document handler found for kind: ${kind}`);
       }
 
+      // ---- create document ----
       await documentHandler.onCreateDocument({
         id,
         title,
@@ -71,7 +76,12 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
         session,
       });
 
-      dataStream.write({ type: "data-finish", data: null, transient: true });
+      // ---- signal completion ----
+      dataStream.write({
+        type: "data-finish",
+        data: null,
+        transient: true,
+      });
 
       return {
         id,

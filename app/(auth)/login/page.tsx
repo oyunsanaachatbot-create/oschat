@@ -49,7 +49,6 @@ export default function Page() {
       setIsGoogleLoading(true);
 
       const supabase = createClient();
-
       const origin =
         typeof window !== "undefined" ? window.location.origin : "";
 
@@ -67,7 +66,7 @@ export default function Page() {
         });
         setIsGoogleLoading(false);
       }
-      // Амжилттай бол redirect хийгдэнэ (эндээс цааш код ажиллахгүй)
+      // success -> redirect (code won't continue)
     } catch {
       toast({
         type: "error",
@@ -88,30 +87,31 @@ export default function Page() {
         </div>
 
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          {/* Email+password submit (хэвээр) */}
-          <SubmitButton isSuccessful={isSuccessful}>Sign in</SubmitButton>
-
-          {/* Google button — яг адил хэмжээ/стиль авахын тулд SubmitButton-ийг reuse хийж байна */}
+          {/* Google button (button type to avoid form submit) */}
           <SubmitButton
             isSuccessful={false}
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               handleGoogleSignIn();
             }}
             disabled={isGoogleLoading}
+            // зураг шиг "цагаан" стиль хэрэгтэй бол className-ийг үлдээж болно (байхгүй бол Button default стиль орно)
+            className="w-full"
           >
             {isGoogleLoading ? "Signing in..." : "Continue with Google"}
           </SubmitButton>
 
-          {/* Нууц үг солих */}
-          <div className="mt-2 text-center">
-            <Link
-              className="text-gray-600 text-sm hover:underline dark:text-zinc-400"
-              href="/reset-password"
-            >
-              Forgot your password?
-            </Link>
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <div className="h-px flex-1 bg-border" />
           </div>
+
+          {/* Email+password submit */}
+          <SubmitButton isSuccessful={isSuccessful} className="w-full">
+            Sign in
+          </SubmitButton>
 
           <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">
             {"Don't have an account? "}
@@ -123,6 +123,15 @@ export default function Page() {
             </Link>
             {" for free."}
           </p>
+
+          <div className="text-center">
+            <Link
+              className="text-gray-600 text-sm hover:underline dark:text-zinc-400"
+              href="/reset-password"
+            >
+              Forgot your password?
+            </Link>
+          </div>
         </AuthForm>
       </div>
     </div>

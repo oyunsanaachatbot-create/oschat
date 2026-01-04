@@ -22,7 +22,8 @@ export const login = async (
       password: formData.get("password"),
     });
 
- const supabase = await createSupabaseServerClient();
+    // ⬇️ IMPORTANT: await
+    const supabase = await createSupabaseServerClient();
 
     const { error } = await supabase.auth.signInWithPassword({
       email: validatedData.email,
@@ -32,7 +33,9 @@ export const login = async (
     if (error) return { status: "failed" };
     return { status: "success" };
   } catch (error) {
-    if (error instanceof z.ZodError) return { status: "invalid_data" };
+    if (error instanceof z.ZodError) {
+      return { status: "invalid_data" };
+    }
     return { status: "failed" };
   }
 };
@@ -57,7 +60,9 @@ export const register = async (
       password: formData.get("password"),
     });
 
-    const supabase = createSupabaseServerClient();
+    // ⬇️ IMPORTANT: await
+    const supabase = await createSupabaseServerClient();
+
     const { data, error } = await supabase.auth.signUp({
       email: validatedData.email,
       password: validatedData.password,
@@ -65,16 +70,25 @@ export const register = async (
 
     if (error) {
       const msg = (error.message || "").toLowerCase();
-      if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
+      if (
+        msg.includes("already") ||
+        msg.includes("registered") ||
+        msg.includes("exists")
+      ) {
         return { status: "user_exists" };
       }
       return { status: "failed" };
     }
 
-    if (!data.user) return { status: "failed" };
+    if (!data.user) {
+      return { status: "failed" };
+    }
+
     return { status: "success" };
   } catch (error) {
-    if (error instanceof z.ZodError) return { status: "invalid_data" };
+    if (error instanceof z.ZodError) {
+      return { status: "invalid_data" };
+    }
     return { status: "failed" };
   }
 };

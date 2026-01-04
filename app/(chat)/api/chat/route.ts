@@ -64,22 +64,36 @@ export function getStreamContext() {
 }
 
 // ✅ Supabase-only session helper (NextAuth байхгүй)
-type UserType = keyof typeof entitlementsByUserType;
-type AppSession = { user: { id: string; type: UserType } };
+// Supabase-only session helper (NextAuth байхгүй)
+
+type UserType = "guest" | "regular";
+
+type AppSession = {
+  user: {
+    id: string;
+    type: UserType;
+  };
+};
 
 async function getAppSession(): Promise<AppSession | null> {
- const supabase = await createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) return null;
 
-  // Хэрвээ user_metadata дээр type хадгалдаг бол түүнийг ашиглана, үгүй бол "free"
-  const metaType = (data.user.user_metadata as any)?.type;
-  const fallbackType = "free" as UserType;
+  if (error || !data?.user) {
+    // login хийгдээгүй → guest
+    return {
+      user: {
+        id: "guest",
+        type: "guest",
+      },
+    };
+  }
 
+  // login хийгдсэн → regular
   return {
     user: {
       id: data.user.id,
-      type: (metaType ?? fallbackType) as UserType,
+      type: "regular",
     },
   };
 }

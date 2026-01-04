@@ -1,4 +1,6 @@
+// /lib/supabase/server.ts
 import "server-only";
+
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -19,7 +21,7 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components дээр set хийх үед алдаа гарч болох тул үл тооно
+          // RSC үед set хийх боломжгүй байж болно — ignore
         }
       },
     },

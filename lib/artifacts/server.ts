@@ -8,12 +8,13 @@ import { saveDocument } from "../db/queries";
 import type { Document } from "../db/schema";
 import type { ChatMessage } from "../types";
 
-// Supabase-only minimal session type (NextAuth байхгүй)
+// ✅ Supabase-only minimal session (NextAuth байхгүй)
 export type AppSession = {
   user?: {
-   id?: string
+    id?: string;
   };
 };
+
 export type SaveDocumentProps = {
   id: string;
   title: string;
@@ -26,16 +27,14 @@ export type CreateDocumentCallbackProps = {
   id: string;
   title: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
-session: AppSession;
-
+  session: AppSession;
 };
 
 export type UpdateDocumentCallbackProps = {
   document: Document;
   description: string;
   dataStream: UIMessageStreamWriter<ChatMessage>;
-session: AppSession;
-
+  session: AppSession;
 };
 
 export type DocumentHandler<T = ArtifactKind> = {
@@ -51,13 +50,8 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
 }): DocumentHandler<T> {
   return {
     kind: config.kind,
-    onCreateDocument: async (args: CreateDocumentCallbackProps) => {
-      const draftContent = await config.onCreateDocument({
-        id: args.id,
-        title: args.title,
-        dataStream: args.dataStream,
-        session: args.session,
-      });
+    onCreateDocument: async (args) => {
+      const draftContent = await config.onCreateDocument(args);
 
       if (args.session?.user?.id) {
         await saveDocument({
@@ -68,16 +62,9 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           userId: args.session.user.id,
         });
       }
-
-      return;
     },
-    onUpdateDocument: async (args: UpdateDocumentCallbackProps) => {
-      const draftContent = await config.onUpdateDocument({
-        document: args.document,
-        description: args.description,
-        dataStream: args.dataStream,
-        session: args.session,
-      });
+    onUpdateDocument: async (args) => {
+      const draftContent = await config.onUpdateDocument(args);
 
       if (args.session?.user?.id) {
         await saveDocument({
@@ -88,15 +75,10 @@ export function createDocumentHandler<T extends ArtifactKind>(config: {
           userId: args.session.user.id,
         });
       }
-
-      return;
     },
   };
 }
 
-/*
- * Use this array to define the document handlers for each artifact kind.
- */
 export const documentHandlersByArtifactKind: DocumentHandler[] = [
   textDocumentHandler,
   codeDocumentHandler,

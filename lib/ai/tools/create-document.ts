@@ -1,3 +1,4 @@
+// /lib/ai/tools/create-document.ts
 import { tool, type UIMessageStreamWriter } from "ai";
 import { z } from "zod";
 import {
@@ -16,7 +17,7 @@ type CreateDocumentProps = {
 export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
   tool({
     description:
-      "Create a document for writing/content creation. Generates an artifact (text/code/sheet).",
+      "Create a document for a writing or content creation activities. This tool will call other functions that will generate the contents of the document based on the title and kind.",
     inputSchema: z.object({
       title: z.string(),
       kind: z.enum(artifactKinds),
@@ -29,10 +30,15 @@ export const createDocument = ({ session, dataStream }: CreateDocumentProps) =>
       dataStream.write({ type: "data-title", data: title, transient: true });
       dataStream.write({ type: "data-clear", data: null, transient: true });
 
-      const handler = documentHandlersByArtifactKind.find((h) => h.kind === kind);
-      if (!handler) throw new Error(`No document handler found for kind: ${kind}`);
+      const documentHandler = documentHandlersByArtifactKind.find(
+        (h) => h.kind === kind
+      );
 
-      await handler.onCreateDocument({
+      if (!documentHandler) {
+        throw new Error(`No document handler found for kind: ${kind}`);
+      }
+
+      await documentHandler.onCreateDocument({
         id,
         title,
         dataStream,

@@ -12,7 +12,9 @@ import {
   createResumableStreamContext,
   type ResumableStreamContext,
 } from "resumable-stream";
-import { auth, type UserType } from "@/app/(auth)/auth";
+
+import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
@@ -51,16 +53,34 @@ export function getStreamContext() {
       });
     } catch (error: any) {
       if (error.message.includes("REDIS_URL")) {
-        console.log(
-          " > Resumable streams are disabled due to missing REDIS_URL"
-        );
+        console.log(" > Resumable streams are disabled due to missing REDIS_URL");
       } else {
         console.error(error);
       }
     }
   }
-
   return globalStreamContext;
+}
+
+// ✅ Supabase-only session helper (NextAuth байхгүй)
+type UserType = keyof typeof entitlementsByUserType;
+type AppSession = { user: { id: string; type: UserType } };
+
+async function getAppSession(): Promise<AppSession | null> {
+  const supabase = createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getUser();
+  if (error || !data?.user) return null;
+
+  // Хэрвээ user_metadata дээр type хадгалдаг бол түүнийг ашиглана, үгүй бол "free"
+  const metaType = (data.user.user_metadata as any)?.type;
+  const fallbackType = "free" as UserType;
+
+  return {
+    user: {
+      id: data.user.id,
+      type: (metaType ?? fallbackType) as UserType,
+    },
+  };
 }
 
 export async function POST(request: Request) {
@@ -77,13 +97,13 @@ export async function POST(request: Request) {
     const { id, message, messages, selectedChatModel, selectedVisibilityType } =
       requestBody;
 
-    const session = await auth();
+    const session = await getAppSession();
 
     if (!session?.user) {
       return new ChatSDKError("unauthorized:chat").toResponse();
     }
 
-    const userType: UserType = session.user.type;
+    const userType = session.user.type;
 
     const messageCount = await getMessageCountByUserId({
       id: session.user.id,
@@ -311,7 +331,7 @@ export async function DELETE(request: Request) {
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
-  const session = await auth();
+  const session = await getAppSession();
 
   if (!session?.user) {
     return new ChatSDKError("unauthorized:chat").toResponse();

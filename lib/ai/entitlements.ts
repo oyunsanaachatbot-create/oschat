@@ -10,5 +10,5 @@ export const entitlementsByUserType: Record<UserType, Entitlements> = {
 };
 
 export function getEntitlements(userType: UserType): Entitlements {
-  return entitlementsByUserType[userType] ?? entitlementsByUserType.guest;
+  return entitlementsByUserType[userType];
 }

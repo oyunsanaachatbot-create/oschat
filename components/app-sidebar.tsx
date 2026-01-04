@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
+
 import { PlusIcon, TrashIcon } from "@/components/icons";
 import {
   getChatHistoryPaginationKey,
@@ -34,7 +34,19 @@ import {
 } from "./ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-export function AppSidebar({ user }: { user: User | undefined }) {
+import type { UserType } from "@/app/(auth)/auth";
+
+/**
+ * 🔑 NextAuth User БИШ
+ * 🔑 Манай custom session.user type
+ */
+type SidebarUser = {
+  id: string;
+  email: string | null;
+  type: UserType;
+};
+
+export function AppSidebar({ user }: { user?: SidebarUser }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const { mutate } = useSWRConfig();
@@ -67,14 +79,13 @@ export function AppSidebar({ user }: { user: User | undefined }) {
               <Link
                 className="flex flex-row items-center gap-3"
                 href="/"
-                onClick={() => {
-                  setOpenMobile(false);
-                }}
+                onClick={() => setOpenMobile(false)}
               >
                 <span className="cursor-pointer rounded-md px-2 font-semibold text-lg hover:bg-muted">
                   Chatbot
                 </span>
               </Link>
+
               <div className="flex flex-row gap-1">
                 {user && (
                   <Tooltip>
@@ -93,6 +104,7 @@ export function AppSidebar({ user }: { user: User | undefined }) {
                     </TooltipContent>
                   </Tooltip>
                 )}
+
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -116,22 +128,26 @@ export function AppSidebar({ user }: { user: User | undefined }) {
             </div>
           </SidebarMenu>
         </SidebarHeader>
+
         <SidebarContent>
           <SidebarHistory user={user} />
         </SidebarContent>
-        <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
+
+        <SidebarFooter>
+          {user && <SidebarUserNav user={user} />}
+        </SidebarFooter>
       </Sidebar>
 
       <AlertDialog
-        onOpenChange={setShowDeleteAllDialog}
         open={showDeleteAllDialog}
+        onOpenChange={setShowDeleteAllDialog}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete all chats?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete all
-              your chats and remove them from our servers.
+              This action cannot be undone. This will permanently delete all your
+              chats and remove them from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

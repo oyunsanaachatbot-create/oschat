@@ -29,10 +29,7 @@ export default function Page() {
     } else if (state.status === "failed") {
       toast({ type: "error", description: "Failed to create account!" });
     } else if (state.status === "invalid_data") {
-      toast({
-        type: "error",
-        description: "Failed validating your submission!",
-      });
+      toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
       toast({ type: "success", description: "Account created successfully!" });
       setIsSuccessful(true);
@@ -55,9 +52,7 @@ export default function Page() {
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${origin}/auth/callback`,
-        },
+        options: { redirectTo: `${origin}/auth/callback` },
       });
 
       if (error) {
@@ -67,12 +62,8 @@ export default function Page() {
         });
         setIsGoogleLoading(false);
       }
-      // success -> redirect
     } catch {
-      toast({
-        type: "error",
-        description: "Google sign-up failed.",
-      });
+      toast({ type: "error", description: "Google sign-up failed." });
       setIsGoogleLoading(false);
     }
   };
@@ -88,7 +79,6 @@ export default function Page() {
         </div>
 
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          {/* Google button */}
           <SubmitButton
             isSuccessful={false}
             type="button"
@@ -108,7 +98,6 @@ export default function Page() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Email+password submit */}
           <SubmitButton isSuccessful={isSuccessful} className="w-full">
             Sign Up
           </SubmitButton>

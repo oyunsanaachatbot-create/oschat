@@ -12,11 +12,10 @@ export type AppSession = {
 };
 
 export async function auth(): Promise<AppSession> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
+  const supabase = await createSupabaseServerClient(); // ✅ заавал await
+  const { data } = await supabase.auth.getUser();
 
-  // Auth алдаа гарсан ч guest гэж үзнэ (UI/route унахгүй)
-  const user = !error ? data.user : null;
+  const user = data.user;
 
   if (!user) {
     return { user: { id: "guest", email: null, type: "guest" } };

@@ -1,3 +1,5 @@
+"use client";
+
 import { createBrowserClient } from "@supabase/ssr";
 
 export function createClient() {
@@ -5,3 +7,6 @@ export function createClient() {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   return createBrowserClient(url, anon);
 }
+
+// ✅ хуучин код эвдэхгүй байлгах alias
+export const createSupabaseBrowserClient = createClient;

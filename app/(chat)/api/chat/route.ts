@@ -111,7 +111,10 @@ export async function POST(request: Request) {
       differenceInHours: 24,
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+  const { maxMessagesPerDay } = getEntitlements(userType);
+
+if (messageCount > maxMessagesPerDay) {
+
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 

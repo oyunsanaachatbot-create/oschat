@@ -15,7 +15,8 @@ import {
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { entitlementsByUserType } from "@/lib/ai/entitlements";
+import { getEntitlements, entitlementsByUserType } from "@/lib/ai/entitlements";
+
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";

@@ -1,11 +1,11 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import { ChevronUp } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import type { User } from "next-auth";
-import { signOut, useSession } from "next-auth/react";
 import { useTheme } from "next-themes";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -19,15 +19,92 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
 import { guestRegex } from "@/lib/constants";
+import { createClient } from "@/lib/supabase/client";
 import { LoaderIcon } from "./icons";
 import { toast } from "./toast";
 
-export function SidebarUserNav({ user }: { user: User }) {
+type MinimalUser = {
+  id: string;
+  email: string | null;
+};
+
+export function SidebarUserNav() {
   const router = useRouter();
-  const { data, status } = useSession();
   const { setTheme, resolvedTheme } = useTheme();
 
-  const isGuest = guestRegex.test(data?.user?.email ?? "");
+  const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">(
+    "loading"
+  );
+  const [user, setUser] = useState<MinimalUser | null>(null);
+
+  // Supabase user-г client дээрээс авч байна
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.getUser();
+
+        if (!mounted) return;
+
+        if (error || !data.user) {
+          setUser(null);
+          setStatus("unauthenticated");
+          return;
+        }
+
+        setUser({
+          id: data.user.id,
+          email: data.user.email ?? null,
+        });
+        setStatus("authenticated");
+      } catch {
+        if (!mounted) return;
+        setUser(null);
+        setStatus("unauthenticated");
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const isGuest = useMemo(() => {
+    return guestRegex.test(user?.email ?? "");
+  }, [user?.email]);
+
+  const handleAuthClick = async () => {
+    if (status === "loading") {
+      toast({
+        type: "error",
+        description: "Checking authentication status, please try again!",
+      });
+      return;
+    }
+
+    // Guest гэж тооцоод login руу явуулна
+    if (status !== "authenticated" || !user || isGuest) {
+      router.push("/login");
+      return;
+    }
+
+    // Жинхэнэ user бол sign out
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      // UI refresh хийхэд хамгийн найдвартай нь
+      window.location.href = "/";
+    } catch {
+      toast({
+        type: "error",
+        description: "Failed to sign out. Please try again.",
+      });
+    }
+  };
+
+  const avatarSeed = user?.email ?? "guest";
 
   return (
     <SidebarMenu>
@@ -52,19 +129,24 @@ export function SidebarUserNav({ user }: { user: User }) {
                 data-testid="user-nav-button"
               >
                 <Image
-                  alt={user.email ?? "User Avatar"}
+                  alt={user?.email ?? "User Avatar"}
                   className="rounded-full"
                   height={24}
-                  src={`https://avatar.vercel.sh/${user.email}`}
+                  src={`https://avatar.vercel.sh/${encodeURIComponent(avatarSeed)}`}
                   width={24}
                 />
                 <span className="truncate" data-testid="user-email">
-                  {isGuest ? "Guest" : user?.email}
+                  {status === "authenticated" && user?.email
+                    ? isGuest
+                      ? "Guest"
+                      : user.email
+                    : "Guest"}
                 </span>
                 <ChevronUp className="ml-auto" />
               </SidebarMenuButton>
             )}
           </DropdownMenuTrigger>
+
           <DropdownMenuContent
             className="w-(--radix-popper-anchor-width)"
             data-testid="user-nav-menu"
@@ -79,32 +161,18 @@ export function SidebarUserNav({ user }: { user: User }) {
             >
               {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
             </DropdownMenuItem>
+
             <DropdownMenuSeparator />
+
             <DropdownMenuItem asChild data-testid="user-nav-item-auth">
               <button
                 className="w-full cursor-pointer"
-                onClick={() => {
-                  if (status === "loading") {
-                    toast({
-                      type: "error",
-                      description:
-                        "Checking authentication status, please try again!",
-                    });
-
-                    return;
-                  }
-
-                  if (isGuest) {
-                    router.push("/login");
-                  } else {
-                    signOut({
-                      redirectTo: "/",
-                    });
-                  }
-                }}
+                onClick={handleAuthClick}
                 type="button"
               >
-                {isGuest ? "Login to your account" : "Sign out"}
+                {status === "authenticated" && user && !isGuest
+                  ? "Sign out"
+                  : "Login to your account"}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

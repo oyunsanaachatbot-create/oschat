@@ -23,7 +23,6 @@ export const login = async (
     });
 
     const supabase = createSupabaseServerClient();
-
     const { error } = await supabase.auth.signInWithPassword({
       email: validatedData.email,
       password: validatedData.password,
@@ -58,13 +57,11 @@ export const register = async (
     });
 
     const supabase = createSupabaseServerClient();
-
     const { data, error } = await supabase.auth.signUp({
       email: validatedData.email,
       password: validatedData.password,
     });
 
-    // Supabase дээр "user already registered" гэх мэт нь error.message-д өөр өөр гарч болно.
     if (error) {
       const msg = (error.message || "").toLowerCase();
       if (msg.includes("already") || msg.includes("registered") || msg.includes("exists")) {
@@ -73,10 +70,7 @@ export const register = async (
       return { status: "failed" };
     }
 
-    // Зарим тохиргоонд email confirm асаалттай бол session = null байж болно.
-    // UI-г өөрчлөхгүй тул бид success буцаана.
     if (!data.user) return { status: "failed" };
-
     return { status: "success" };
   } catch (error) {
     if (error instanceof z.ZodError) return { status: "invalid_data" };

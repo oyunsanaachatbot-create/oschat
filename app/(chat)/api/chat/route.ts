@@ -14,10 +14,7 @@ import {
 } from "resumable-stream";
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
-
-// ✅ getEntitlements байхгүй тул зөвхөн mapping-оо авна
 import { entitlementsByUserType } from "@/lib/ai/entitlements";
-
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
 import { createDocument } from "@/lib/ai/tools/create-document";
@@ -42,6 +39,7 @@ import type { ChatMessage } from "@/lib/types";
 import { convertToUIMessages, generateUUID } from "@/lib/utils";
 import { generateTitleFromUserMessage } from "../../actions";
 import { type PostRequestBody, postRequestBodySchema } from "./schema";
+import type { UserType } from "@/app/(auth)/auth";
 
 export const maxDuration = 60;
 
@@ -50,11 +48,9 @@ let globalStreamContext: ResumableStreamContext | null = null;
 export function getStreamContext() {
   if (!globalStreamContext) {
     try {
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
+      globalStreamContext = createResumableStreamContext({ waitUntil: after });
     } catch (error: any) {
-      if (error?.message?.includes("REDIS_URL")) {
+      if (error.message?.includes("REDIS_URL")) {
         console.log(" > Resumable streams are disabled due to missing REDIS_URL");
       } else {
         console.error(error);
@@ -64,52 +60,23 @@ export function getStreamContext() {
   return globalStreamContext;
 }
 
-// ✅ UserType-г mapping-оосоо гаргаж авна (төрөл нэмэгдсэн ч автоматаар дагана)
-type UserType = keyof typeof entitlementsByUserType;
-
+// ✅ Supabase-only session helper
 type AppSession = {
   user: {
-    id: string; // guest эсвэл supabase user id
+    id: string;
     type: UserType;
   };
 };
 
-// ✅ entitlements helper (getEntitlements байхгүйг нөхнө)
-function getEntitlementsSafe(userType: UserType) {
-  // mapping байхгүй бол fallback
-  return entitlementsByUserType[userType] ?? { maxMessagesPerDay: 20 };
-}
-
 async function getAppSession(): Promise<AppSession> {
-  // ⚠️ createSupabaseServerClient() дээр await авахгүй!
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient(); // ✅ заавал await
   const { data } = await supabase.auth.getUser();
-  const user = data?.user;
 
-  if (!user) {
-    return {
-      user: {
-        id: "guest",
-        type: "guest" as UserType,
-      },
-    };
+  if (!data?.user) {
+    return { user: { id: "guest", type: "guest" } };
   }
 
-  // metadata дээр type байвал хэрэглэнэ, байхгүй бол regular
-  const rawType = (user.user_metadata as any)?.type as string | undefined;
-  const fallbackType = "regular" as UserType;
-
-  const resolvedType: UserType =
-    rawType && rawType in entitlementsByUserType
-      ? (rawType as UserType)
-      : fallbackType;
-
-  return {
-    user: {
-      id: user.id,
-      type: resolvedType,
-    },
-  };
+  return { user: { id: data.user.id, type: "regular" } };
 }
 
 export async function POST(request: Request) {
@@ -128,19 +95,17 @@ export async function POST(request: Request) {
 
     const session = await getAppSession();
 
-    // ✅ Rate limit (guest үед DB query алгасна)
     const userType = session.user.type;
-    const { maxMessagesPerDay } = getEntitlementsSafe(userType);
 
-    let messageCount = 0;
-    if (session.user.id !== "guest") {
-      messageCount = await getMessageCountByUserId({
-        id: session.user.id,
-        differenceInHours: 24,
-      });
-    }
+    const messageCount = await getMessageCountByUserId({
+      id: session.user.id,
+      differenceInHours: 24,
+    });
 
-    if (messageCount >= maxMessagesPerDay) {
+    const { maxMessagesPerDay } =
+      entitlementsByUserType[userType] ?? entitlementsByUserType.guest;
+
+    if (messageCount > maxMessagesPerDay) {
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 
@@ -173,13 +138,7 @@ export async function POST(request: Request) {
       : [...convertToUIMessages(messagesFromDb), message as ChatMessage];
 
     const { longitude, latitude, city, country } = geolocation(request);
-
-    const requestHints: RequestHints = {
-      longitude,
-      latitude,
-      city,
-      country,
-    };
+    const requestHints: RequestHints = { longitude, latitude, city, country };
 
     if (message?.role === "user") {
       await saveMessages({
@@ -220,21 +179,12 @@ export async function POST(request: Request) {
           stopWhen: stepCountIs(5),
           experimental_activeTools: isReasoningModel
             ? []
-            : [
-                "getWeather",
-                "createDocument",
-                "updateDocument",
-                "requestSuggestions",
-              ],
+            : ["getWeather", "createDocument", "updateDocument", "requestSuggestions"],
           experimental_transform: isReasoningModel
             ? undefined
             : smoothStream({ chunking: "word" }),
           providerOptions: isReasoningModel
-            ? {
-                anthropic: {
-                  thinking: { type: "enabled", budgetTokens: 10_000 },
-                },
-              }
+            ? { anthropic: { thinking: { type: "enabled", budgetTokens: 10_000 } } }
             : undefined,
           tools: {
             getWeather,
@@ -249,12 +199,7 @@ export async function POST(request: Request) {
         });
 
         result.consumeStream();
-
-        dataStream.merge(
-          result.toUIMessageStream({
-            sendReasoning: true,
-          })
-        );
+        dataStream.merge(result.toUIMessageStream({ sendReasoning: true }));
       },
       generateId: generateUUID,
       onFinish: async ({ messages: finishedMessages }) => {
@@ -262,10 +207,7 @@ export async function POST(request: Request) {
           for (const finishedMsg of finishedMessages) {
             const existingMsg = uiMessages.find((m) => m.id === finishedMsg.id);
             if (existingMsg) {
-              await updateMessage({
-                id: finishedMsg.id,
-                parts: finishedMsg.parts,
-              });
+              await updateMessage({ id: finishedMsg.id, parts: finishedMsg.parts });
             } else {
               await saveMessages({
                 messages: [
@@ -283,10 +225,10 @@ export async function POST(request: Request) {
           }
         } else if (finishedMessages.length > 0) {
           await saveMessages({
-            messages: finishedMessages.map((currentMessage) => ({
-              id: currentMessage.id,
-              role: currentMessage.role,
-              parts: currentMessage.parts,
+            messages: finishedMessages.map((m) => ({
+              id: m.id,
+              role: m.role,
+              parts: m.parts,
               createdAt: new Date(),
               attachments: [],
               chatId: id,
@@ -294,22 +236,17 @@ export async function POST(request: Request) {
           });
         }
       },
-      onError: () => {
-        return "Oops, an error occurred!";
-      },
+      onError: () => "Oops, an error occurred!",
     });
 
     const streamContext = getStreamContext();
 
     if (streamContext) {
       try {
-        const resumableStream = await streamContext.resumableStream(
-          streamId,
-          () => stream.pipeThrough(new JsonToSseTransformStream())
+        const resumableStream = await streamContext.resumableStream(streamId, () =>
+          stream.pipeThrough(new JsonToSseTransformStream())
         );
-        if (resumableStream) {
-          return new Response(resumableStream);
-        }
+        if (resumableStream) return new Response(resumableStream);
       } catch (error) {
         console.error("Failed to create resumable stream:", error);
       }
@@ -319,18 +256,7 @@ export async function POST(request: Request) {
   } catch (error) {
     const vercelId = request.headers.get("x-vercel-id");
 
-    if (error instanceof ChatSDKError) {
-      return error.toResponse();
-    }
-
-    if (
-      error instanceof Error &&
-      error.message?.includes(
-        "AI Gateway requires a valid credit card on file to service requests"
-      )
-    ) {
-      return new ChatSDKError("bad_request:activate_gateway").toResponse();
-    }
+    if (error instanceof ChatSDKError) return error.toResponse();
 
     console.error("Unhandled error in chat API:", error, { vercelId });
     return new ChatSDKError("offline:chat").toResponse();
@@ -341,19 +267,15 @@ export async function DELETE(request: Request) {
   const { searchParams } = new URL(request.url);
   const id = searchParams.get("id");
 
-  if (!id) {
-    return new ChatSDKError("bad_request:api").toResponse();
-  }
+  if (!id) return new ChatSDKError("bad_request:api").toResponse();
 
   const session = await getAppSession();
 
   const chat = await getChatById({ id });
-
   if (chat?.userId !== session.user.id) {
     return new ChatSDKError("forbidden:chat").toResponse();
   }
 
   const deletedChat = await deleteChatById({ id });
-
   return Response.json(deletedChat, { status: 200 });
 }

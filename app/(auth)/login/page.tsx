@@ -24,15 +24,9 @@ export default function Page() {
   // biome-ignore lint/correctness/useExhaustiveDependencies: router is stable ref
   useEffect(() => {
     if (state.status === "failed") {
-      toast({
-        type: "error",
-        description: "Invalid credentials!",
-      });
+      toast({ type: "error", description: "Invalid credentials!" });
     } else if (state.status === "invalid_data") {
-      toast({
-        type: "error",
-        description: "Failed validating your submission!",
-      });
+      toast({ type: "error", description: "Failed validating your submission!" });
     } else if (state.status === "success") {
       setIsSuccessful(true);
       router.refresh();
@@ -54,9 +48,7 @@ export default function Page() {
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
-        options: {
-          redirectTo: `${origin}/auth/callback`,
-        },
+        options: { redirectTo: `${origin}/auth/callback` },
       });
 
       if (error) {
@@ -66,12 +58,8 @@ export default function Page() {
         });
         setIsGoogleLoading(false);
       }
-      // success -> redirect (code won't continue)
     } catch {
-      toast({
-        type: "error",
-        description: "Google sign-in failed.",
-      });
+      toast({ type: "error", description: "Google sign-in failed." });
       setIsGoogleLoading(false);
     }
   };
@@ -87,7 +75,6 @@ export default function Page() {
         </div>
 
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          {/* Google button (button type to avoid form submit) */}
           <SubmitButton
             isSuccessful={false}
             type="button"
@@ -96,7 +83,6 @@ export default function Page() {
               handleGoogleSignIn();
             }}
             disabled={isGoogleLoading}
-            // зураг шиг "цагаан" стиль хэрэгтэй бол className-ийг үлдээж болно (байхгүй бол Button default стиль орно)
             className="w-full"
           >
             {isGoogleLoading ? "Signing in..." : "Continue with Google"}
@@ -108,7 +94,6 @@ export default function Page() {
             <div className="h-px flex-1 bg-border" />
           </div>
 
-          {/* Email+password submit */}
           <SubmitButton isSuccessful={isSuccessful} className="w-full">
             Sign in
           </SubmitButton>

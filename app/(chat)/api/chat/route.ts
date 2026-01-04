@@ -15,7 +15,8 @@ import {
 
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-import { getEntitlements, entitlementsByUserType } from "@/lib/ai/entitlements";
+// ✅ getEntitlements байхгүй тул зөвхөн mapping-оо авна
+import { entitlementsByUserType } from "@/lib/ai/entitlements";
 
 import { type RequestHints, systemPrompt } from "@/lib/ai/prompts";
 import { getLanguageModel } from "@/lib/ai/providers";
@@ -53,7 +54,7 @@ export function getStreamContext() {
         waitUntil: after,
       });
     } catch (error: any) {
-      if (error.message.includes("REDIS_URL")) {
+      if (error?.message?.includes("REDIS_URL")) {
         console.log(" > Resumable streams are disabled due to missing REDIS_URL");
       } else {
         console.error(error);
@@ -63,37 +64,50 @@ export function getStreamContext() {
   return globalStreamContext;
 }
 
-// ✅ Supabase-only session helper (NextAuth байхгүй)
-// Supabase-only session helper (NextAuth байхгүй)
-
-type UserType = "guest" | "regular";
+// ✅ UserType-г mapping-оосоо гаргаж авна (төрөл нэмэгдсэн ч автоматаар дагана)
+type UserType = keyof typeof entitlementsByUserType;
 
 type AppSession = {
   user: {
-    id: string;
+    id: string; // guest эсвэл supabase user id
     type: UserType;
   };
 };
 
-async function getAppSession(): Promise<AppSession | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data, error } = await supabase.auth.getUser();
+// ✅ entitlements helper (getEntitlements байхгүйг нөхнө)
+function getEntitlementsSafe(userType: UserType) {
+  // mapping байхгүй бол fallback
+  return entitlementsByUserType[userType] ?? { maxMessagesPerDay: 20 };
+}
 
-  if (error || !data?.user) {
-    // login хийгдээгүй → guest
+async function getAppSession(): Promise<AppSession> {
+  // ⚠️ createSupabaseServerClient() дээр await авахгүй!
+  const supabase = createSupabaseServerClient();
+  const { data } = await supabase.auth.getUser();
+  const user = data?.user;
+
+  if (!user) {
     return {
       user: {
         id: "guest",
-        type: "guest",
+        type: "guest" as UserType,
       },
     };
   }
 
-  // login хийгдсэн → regular
+  // metadata дээр type байвал хэрэглэнэ, байхгүй бол regular
+  const rawType = (user.user_metadata as any)?.type as string | undefined;
+  const fallbackType = "regular" as UserType;
+
+  const resolvedType: UserType =
+    rawType && rawType in entitlementsByUserType
+      ? (rawType as UserType)
+      : fallbackType;
+
   return {
     user: {
-      id: data.user.id,
-      type: "regular",
+      id: user.id,
+      type: resolvedType,
     },
   };
 }
@@ -104,7 +118,7 @@ export async function POST(request: Request) {
   try {
     const json = await request.json();
     requestBody = postRequestBodySchema.parse(json);
-  } catch (_) {
+  } catch {
     return new ChatSDKError("bad_request:api").toResponse();
   }
 
@@ -114,25 +128,22 @@ export async function POST(request: Request) {
 
     const session = await getAppSession();
 
-    if (!session?.user) {
-      return new ChatSDKError("unauthorized:chat").toResponse();
+    // ✅ Rate limit (guest үед DB query алгасна)
+    const userType = session.user.type;
+    const { maxMessagesPerDay } = getEntitlementsSafe(userType);
+
+    let messageCount = 0;
+    if (session.user.id !== "guest") {
+      messageCount = await getMessageCountByUserId({
+        id: session.user.id,
+        differenceInHours: 24,
+      });
     }
 
-    const userType = session.user.type;
-
-    const messageCount = await getMessageCountByUserId({
-      id: session.user.id,
-      differenceInHours: 24,
-    });
-
-  const { maxMessagesPerDay } = getEntitlements(userType);
-
-if (messageCount > maxMessagesPerDay) {
-
+    if (messageCount >= maxMessagesPerDay) {
       return new ChatSDKError("rate_limit:chat").toResponse();
     }
 
-    // Check if this is a tool approval flow (all messages sent)
     const isToolApprovalFlow = Boolean(messages);
 
     const chat = await getChatById({ id });
@@ -143,12 +154,10 @@ if (messageCount > maxMessagesPerDay) {
       if (chat.userId !== session.user.id) {
         return new ChatSDKError("forbidden:chat").toResponse();
       }
-      // Only fetch messages if chat already exists and not tool approval
       if (!isToolApprovalFlow) {
         messagesFromDb = await getMessagesByChatId({ id });
       }
     } else if (message?.role === "user") {
-      // Save chat immediately with placeholder title
       await saveChat({
         id,
         userId: session.user.id,
@@ -156,11 +165,9 @@ if (messageCount > maxMessagesPerDay) {
         visibility: selectedVisibilityType,
       });
 
-      // Start title generation in parallel (don't await)
       titlePromise = generateTitleFromUserMessage({ message });
     }
 
-    // Use all messages for tool approval, otherwise DB messages + new message
     const uiMessages = isToolApprovalFlow
       ? (messages as ChatMessage[])
       : [...convertToUIMessages(messagesFromDb), message as ChatMessage];
@@ -174,7 +181,6 @@ if (messageCount > maxMessagesPerDay) {
       country,
     };
 
-    // Only save user messages to the database (not tool approval responses)
     if (message?.role === "user") {
       await saveMessages({
         messages: [
@@ -194,10 +200,8 @@ if (messageCount > maxMessagesPerDay) {
     await createStreamId({ streamId, chatId: id });
 
     const stream = createUIMessageStream({
-      // Pass original messages for tool approval continuation
       originalMessages: isToolApprovalFlow ? uiMessages : undefined,
       execute: async ({ writer: dataStream }) => {
-        // Handle title generation in parallel
         if (titlePromise) {
           titlePromise.then((title) => {
             updateChatTitleById({ chatId: id, title });
@@ -236,10 +240,7 @@ if (messageCount > maxMessagesPerDay) {
             getWeather,
             createDocument: createDocument({ session, dataStream }),
             updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
+            requestSuggestions: requestSuggestions({ session, dataStream }),
           },
           experimental_telemetry: {
             isEnabled: isProductionEnvironment,
@@ -258,17 +259,14 @@ if (messageCount > maxMessagesPerDay) {
       generateId: generateUUID,
       onFinish: async ({ messages: finishedMessages }) => {
         if (isToolApprovalFlow) {
-          // For tool approval, update existing messages (tool state changed) and save new ones
           for (const finishedMsg of finishedMessages) {
             const existingMsg = uiMessages.find((m) => m.id === finishedMsg.id);
             if (existingMsg) {
-              // Update existing message with new parts (tool state changed)
               await updateMessage({
                 id: finishedMsg.id,
                 parts: finishedMsg.parts,
               });
             } else {
-              // Save new message
               await saveMessages({
                 messages: [
                   {
@@ -284,7 +282,6 @@ if (messageCount > maxMessagesPerDay) {
             }
           }
         } else if (finishedMessages.length > 0) {
-          // Normal flow - save all finished messages
           await saveMessages({
             messages: finishedMessages.map((currentMessage) => ({
               id: currentMessage.id,
@@ -326,7 +323,6 @@ if (messageCount > maxMessagesPerDay) {
       return error.toResponse();
     }
 
-    // Check for Vercel AI Gateway credit card error
     if (
       error instanceof Error &&
       error.message?.includes(
@@ -350,10 +346,6 @@ export async function DELETE(request: Request) {
   }
 
   const session = await getAppSession();
-
-  if (!session?.user) {
-    return new ChatSDKError("unauthorized:chat").toResponse();
-  }
 
   const chat = await getChatById({ id });
 

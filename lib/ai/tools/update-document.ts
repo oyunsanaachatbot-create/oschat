@@ -1,62 +1,58 @@
 import { tool, type UIMessageStreamWriter } from "ai";
-import type { Session } from "next-auth";
 import { z } from "zod";
 import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
 import { getDocumentById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 
+// ✅ NextAuth Session-ийн оронд минимал app session type
+export type AppSession = {
+  user?: {
+    id?: string;
+  };
+};
+
 type UpdateDocumentProps = {
-  session: Session;
+  session: AppSession;
   dataStream: UIMessageStreamWriter<ChatMessage>;
 };
 
 export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
   tool({
-    description: "Update a document with the given description.",
+    description:
+      "Update an existing document artifact. This tool will call other functions that update the document based on the id and kind.",
     inputSchema: z.object({
-      id: z.string().describe("The ID of the document to update"),
-      description: z
-        .string()
-        .describe("The description of changes that need to be made"),
+      id: z.string(),
+      title: z.string().optional(),
+      content: z.string().optional(),
     }),
-    execute: async ({ id, description }) => {
+    execute: async ({ id, title, content }) => {
       const document = await getDocumentById({ id });
 
       if (!document) {
-        return {
-          error: "Document not found",
-        };
+        return { error: "Document not found" };
       }
 
-      dataStream.write({
-        type: "data-clear",
-        data: null,
-        transient: true,
-      });
-
-      const documentHandler = documentHandlersByArtifactKind.find(
-        (documentHandlerByArtifactKind) =>
-          documentHandlerByArtifactKind.kind === document.kind
+      const handler = documentHandlersByArtifactKind.find(
+        (h) => h.kind === document.kind
       );
 
-      if (!documentHandler) {
+      if (!handler) {
         throw new Error(`No document handler found for kind: ${document.kind}`);
       }
 
-      await documentHandler.onUpdateDocument({
-        document,
-        description,
+      await handler.onUpdateDocument({
+        id,
+        title,
+        content,
         dataStream,
         session,
       });
 
-      dataStream.write({ type: "data-finish", data: null, transient: true });
-
       return {
         id,
-        title: document.title,
+        title: title ?? document.title,
         kind: document.kind,
-        content: "The document has been updated successfully.",
+        message: "Document updated",
       };
     },
   });

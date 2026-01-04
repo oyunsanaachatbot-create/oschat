@@ -12,7 +12,7 @@ export type AppSession = {
 };
 
 export async function auth(): Promise<AppSession> {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient(); // ✅ await нэмсэн
   const { data } = await supabase.auth.getUser();
   const user = data.user;
 

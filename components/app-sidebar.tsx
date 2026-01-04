@@ -123,9 +123,14 @@ export function AppSidebar({ user }: { user: AppUser | undefined }) {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarHistory
-            user={user ? { ...user, email: user.email ?? null } : undefined}
-          />
+         <SidebarHistory
+  user={
+    user && user.type
+      ? { id: user.id, email: user.email ?? null, type: user.type as any }
+      : undefined
+  }
+/>
+
         </SidebarContent>
 
         <SidebarFooter>

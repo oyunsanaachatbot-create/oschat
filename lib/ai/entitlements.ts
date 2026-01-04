@@ -5,10 +5,10 @@ type Entitlements = {
 };
 
 export const entitlementsByUserType: Record<UserType, Entitlements> = {
-  guest: {
-    maxMessagesPerDay: 20,
-  },
-  regular: {
-    maxMessagesPerDay: 50,
-  },
+  guest: { maxMessagesPerDay: 20 },
+  regular: { maxMessagesPerDay: 50 },
 };
+
+export function getEntitlements(userType: UserType): Entitlements {
+  return entitlementsByUserType[userType] ?? entitlementsByUserType.guest;
+}

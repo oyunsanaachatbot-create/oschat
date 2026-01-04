@@ -1,5 +1,4 @@
 import { Output, streamText, tool, type UIMessageStreamWriter } from "ai";
-import type { Session } from "next-auth";
 import { z } from "zod";
 import { getDocumentById, saveSuggestions } from "@/lib/db/queries";
 import type { Suggestion } from "@/lib/db/schema";
@@ -7,8 +6,15 @@ import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 import { getArtifactModel } from "../providers";
 
+// ✅ NextAuth Session-ийн оронд минимал app session type
+export type AppSession = {
+  user?: {
+    id?: string;
+  };
+};
+
 type RequestSuggestionsProps = {
-  session: Session;
+  session: AppSession;
   dataStream: UIMessageStreamWriter<ChatMessage>;
 };
 
@@ -58,9 +64,7 @@ export const requestSuggestions = ({
 
       let processedCount = 0;
       for await (const partialOutput of partialOutputStream) {
-        if (!partialOutput) {
-          continue;
-        }
+        if (!partialOutput) continue;
 
         for (let i = processedCount; i < partialOutput.length; i++) {
           const element = partialOutput[i];
@@ -92,9 +96,8 @@ export const requestSuggestions = ({
         }
       }
 
-      if (session.user?.id) {
-        const userId = session.user.id;
-
+      const userId = session.user?.id;
+      if (userId) {
         await saveSuggestions({
           suggestions: suggestions.map((suggestion) => ({
             ...suggestion,

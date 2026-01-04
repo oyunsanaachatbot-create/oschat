@@ -1,4 +1,3 @@
-// /app/(auth)/auth.ts
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -14,13 +13,14 @@ export type AppSession = {
 
 export async function auth(): Promise<AppSession> {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  const { data, error } = await supabase.auth.getUser();
+
+  // Auth алдаа гарсан ч guest гэж үзнэ (UI/route унахгүй)
+  const user = !error ? data.user : null;
 
   if (!user) {
     return { user: { id: "guest", email: null, type: "guest" } };
   }
 
-  // login хийсэн хүн бол regular гэж үзнэ
   return { user: { id: user.id, email: user.email ?? null, type: "regular" } };
 }

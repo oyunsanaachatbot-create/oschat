@@ -19,7 +19,7 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // Server Components дээр set хийх боломжгүй үед алгасна
+          // Server Components дээр set хийх үед алдаа гарч болох тул үл тооно
         }
       },
     },

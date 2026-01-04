@@ -122,32 +122,39 @@ export function AppSidebar({ user }: { user: AppUser | undefined }) {
           </SidebarMenu>
         </SidebarHeader>
 
-      <SidebarContent>
-  <SidebarHistory
-    user={user ? { ...user, email: user.email ?? null } : undefined}
-  />
-</SidebarContent>
+        <SidebarContent>
+          <SidebarHistory
+            user={user ? { ...user, email: user.email ?? null } : undefined}
+          />
+        </SidebarContent>
 
-<SidebarFooter>
-  {user && (
-    <SidebarUserNav user={{ ...user, email: user.email ?? null }} />
-  )}
-</SidebarFooter>
+        <SidebarFooter>
+          {user && (
+            <SidebarUserNav user={{ ...user, email: user.email ?? null }} />
+          )}
+        </SidebarFooter>
 
-<AlertDialog onOpenChange={setShowDeleteAllDialog} open={showDeleteAllDialog}>
-  <AlertDialogContent>
-    <AlertDialogHeader>
-      <AlertDialogTitle>Delete all chats?</AlertDialogTitle>
-      <AlertDialogDescription>
-        This action cannot be undone. This will permanently delete all your chats and remove them from our servers.
-      </AlertDialogDescription>
-    </AlertDialogHeader>
-    <AlertDialogFooter>
-      <AlertDialogCancel>Cancel</AlertDialogCancel>
-      <AlertDialogAction onClick={handleDeleteAll}>Delete All</AlertDialogAction>
-    </AlertDialogFooter>
-  </AlertDialogContent>
-</AlertDialog>
+        <AlertDialog
+          open={showDeleteAllDialog}
+          onOpenChange={setShowDeleteAllDialog}
+        >
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete all chats?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete all
+                your chats and remove them from our servers.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteAll}>
+                Delete All
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </Sidebar>
     </>
   );
 }

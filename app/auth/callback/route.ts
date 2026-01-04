@@ -11,7 +11,7 @@ export async function GET(request: Request) {
 
   const supabase = await createSupabaseServerClient();
 
-  // OAuth code -> session (cookie) болгож сольж өгнө
+  // OAuth code -> session cookie болгоно
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {

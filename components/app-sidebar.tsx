@@ -123,10 +123,18 @@ export function AppSidebar({ user }: { user: AppUser | undefined }) {
         </SidebarHeader>
 
         <SidebarContent>
-          <SidebarHistory user={user} />
-        </SidebarContent>
+         <SidebarHistory
+  user={user ? { ...user, email: user.email ?? null } : undefined}
+/>
 
-        <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
+<SidebarFooter>
+  {user && (
+    <SidebarUserNav
+      user={{ ...user, email: user.email ?? null }}
+    />
+  )}
+</SidebarFooter>
+
       </Sidebar>
 
       <AlertDialog onOpenChange={setShowDeleteAllDialog} open={showDeleteAllDialog}>

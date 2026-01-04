@@ -12,13 +12,20 @@ export type AppSession = {
 };
 
 export async function auth(): Promise<AppSession> {
-  const supabase = await createSupabaseServerClient(); // ✅ await нэмсэн
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.getUser();
 
-  if (!user) {
+  const user = data?.user;
+
+  if (error || !user) {
     return { user: { id: "guest", email: null, type: "guest" } };
   }
 
-  return { user: { id: user.id, email: user.email ?? null, type: "user" } };
+  return {
+    user: {
+      id: user.id,
+      email: user.email ?? null,
+      type: "user",
+    },
+  };
 }

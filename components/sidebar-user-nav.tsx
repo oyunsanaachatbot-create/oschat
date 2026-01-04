@@ -21,60 +21,50 @@ import {
 
 import { guestRegex } from "@/lib/constants";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
-import { signOut as serverSignOut } from "@/app/(auth)/actions";
+import { signOutAction } from "@/app/(auth)/actions";
 import { LoaderIcon } from "./icons";
 import { toast } from "./toast";
 
-type SidebarUserNavProps = {
-  user: { email?: string | null };
-};
+type SimpleUser = { email?: string | null };
 
-type AuthStatus = "loading" | "authenticated" | "unauthenticated";
-
-export function SidebarUserNav({ user }: SidebarUserNavProps) {
+export function SidebarUserNav({ user }: { user: SimpleUser }) {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
 
-  const [status, setStatus] = useState<AuthStatus>("loading");
+  const supabase = useMemo(() => createSupabaseBrowserClient(), []);
+  const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState<string | null>(user?.email ?? null);
 
-  const isGuest = useMemo(() => guestRegex.test(email ?? ""), [email]);
-
   useEffect(() => {
-    const supabase = createSupabaseBrowserClient();
+    let mounted = true;
 
-    let unsub: (() => void) | null = null;
+    (async () => {
+      const { data } = await supabase.auth.getUser();
+      if (!mounted) return;
 
-    const init = async () => {
-      const { data } = await supabase.auth.getSession();
-      const sessionEmail = data.session?.user?.email ?? null;
+      const e = data.user?.email ?? null;
+      setEmail(e);
+      setLoading(false);
+    })();
 
-      setEmail(sessionEmail ?? user?.email ?? null);
-      setStatus(data.session ? "authenticated" : "unauthenticated");
-
-      const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-        const nextEmail = session?.user?.email ?? null;
-        setEmail(nextEmail ?? user?.email ?? null);
-        setStatus(session ? "authenticated" : "unauthenticated");
-      });
-
-      unsub = () => sub.subscription.unsubscribe();
-    };
-
-    init();
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
+      setEmail(session?.user?.email ?? null);
+    });
 
     return () => {
-      unsub?.();
+      mounted = false;
+      sub.subscription.unsubscribe();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [supabase]);
+
+  const isGuest = guestRegex.test(email ?? "") || !email;
 
   return (
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            {status === "loading" ? (
+            {loading ? (
               <SidebarMenuButton className="h-10 justify-between bg-background data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground">
                 <div className="flex flex-row gap-2">
                   <div className="size-6 animate-pulse rounded-full bg-zinc-500/30" />
@@ -92,11 +82,11 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
                 data-testid="user-nav-button"
               >
                 <Image
-                  alt={email ?? "User Avatar"}
+                  alt={email ?? "Guest"}
                   className="rounded-full"
                   height={24}
-                  src={`https://avatar.vercel.sh/${email ?? "user"}`}
                   width={24}
+                  src={`https://avatar.vercel.sh/${email ?? "guest"}`}
                 />
                 <span className="truncate" data-testid="user-email">
                   {isGuest ? "Guest" : email}
@@ -126,25 +116,30 @@ export function SidebarUserNav({ user }: SidebarUserNavProps) {
                 className="w-full cursor-pointer"
                 type="button"
                 onClick={async () => {
-                  if (status === "loading") {
+                  if (loading) {
                     toast({
                       type: "error",
-                      description: "Checking authentication status, please try again!",
+                      description: "Checking auth status, please try again!",
                     });
                     return;
                   }
 
-                  if (isGuest || status === "unauthenticated") {
+                  if (isGuest) {
                     router.push("/login");
                     return;
                   }
 
-                  await serverSignOut(); // ✅ Supabase signOut (server action)
+                  const res = await signOutAction();
+                  if (!res.ok) {
+                    toast({ type: "error", description: "Sign out failed!" });
+                    return;
+                  }
+
                   router.refresh();
-                  router.push("/login");
+                  router.push("/");
                 }}
               >
-                {isGuest || status === "unauthenticated" ? "Login to your account" : "Sign out"}
+                {isGuest ? "Login to your account" : "Sign out"}
               </button>
             </DropdownMenuItem>
           </DropdownMenuContent>

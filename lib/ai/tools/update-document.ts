@@ -4,7 +4,7 @@ import { documentHandlersByArtifactKind } from "@/lib/artifacts/server";
 import { getDocumentById } from "@/lib/db/queries";
 import type { ChatMessage } from "@/lib/types";
 
-// ✅ NextAuth Session-ийн оронд минимал app session type
+// ✅ NextAuth Session-ийн оронд минимал app session (type-only)
 export type AppSession = {
   user?: {
     id?: string;
@@ -40,13 +40,22 @@ export const updateDocument = ({ session, dataStream }: UpdateDocumentProps) =>
         throw new Error(`No document handler found for kind: ${document.kind}`);
       }
 
-    await handler.onUpdateDocument({
-  title,
-  content,
-  dataStream,
-  session,
-});
+      // ✅ Callback чинь title/content авахгүй.
+      // ✅ Харин "document" + "description" авдаг.
+      const descriptionParts: string[] = [];
+      if (typeof title === "string") descriptionParts.push("title");
+      if (typeof content === "string") descriptionParts.push("content");
+      const description =
+        descriptionParts.length > 0
+          ? `Update document ${descriptionParts.join(" & ")}`
+          : "Update document";
 
+      await handler.onUpdateDocument({
+        document,
+        description,
+        dataStream,
+        session: session as any, // type-only тохируулга (runtime эвдэхгүй)
+      });
 
       return {
         id,

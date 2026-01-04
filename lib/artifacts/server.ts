@@ -11,7 +11,7 @@ import type { ChatMessage } from "../types";
 // Supabase-only minimal session type (NextAuth байхгүй)
 export type AppSession = {
   user?: {
-    id?: stringf
+   id?: string
   };
 };
 export type SaveDocumentProps = {

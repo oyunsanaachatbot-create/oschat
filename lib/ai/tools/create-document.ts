@@ -1,5 +1,4 @@
 import { tool, type UIMessageStreamWriter } from "ai";
-import type { Session } from "next-auth";
 import { z } from "zod";
 import {
   artifactKinds,
@@ -8,8 +7,16 @@ import {
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 
+// ✅ NextAuth Session-ийн оронд минимал app session type
+export type AppSession = {
+  user: {
+    id: string;
+  };
+  // хэрэгтэй бол дараа нь нэмнэ (email/type гэх мэт)
+};
+
 type CreateDocumentProps = {
-  session: Session;
+  session: AppSession;
   dataStream: UIMessageStreamWriter<ChatMessage>;
 };
 

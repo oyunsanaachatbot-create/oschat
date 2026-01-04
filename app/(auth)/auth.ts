@@ -1,3 +1,4 @@
+// /app/(auth)/auth.ts
 import "server-only";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -20,6 +21,6 @@ export async function auth(): Promise<AppSession> {
     return { user: { id: "guest", email: null, type: "guest" } };
   }
 
-  // login хийсэн user → regular
+  // login хийсэн хүн бол regular гэж үзнэ
   return { user: { id: user.id, email: user.email ?? null, type: "regular" } };
 }

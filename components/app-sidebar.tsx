@@ -34,28 +34,21 @@ import {
 } from "./ui/alert-dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-import type { UserType } from "@/app/(auth)/auth";
-
-/**
- * 🔑 NextAuth User БИШ
- * 🔑 Манай custom session.user type
- */
-type SidebarUser = {
+// ✅ NextAuth User-ийн оронд манай app-ийн user type
+export type AppUser = {
   id: string;
-  email: string | null;
-  type: UserType;
+  email?: string | null;
+  type?: string; // UserType байвал тэрийг нь тавьж болно
 };
 
-export function AppSidebar({ user }: { user?: SidebarUser }) {
+export function AppSidebar({ user }: { user: AppUser | undefined }) {
   const router = useRouter();
   const { setOpenMobile } = useSidebar();
   const { mutate } = useSWRConfig();
   const [showDeleteAllDialog, setShowDeleteAllDialog] = useState(false);
 
   const handleDeleteAll = () => {
-    const deletePromise = fetch("/api/history", {
-      method: "DELETE",
-    });
+    const deletePromise = fetch("/api/history", { method: "DELETE" });
 
     toast.promise(deletePromise, {
       loading: "Deleting all chats...",
@@ -133,28 +126,20 @@ export function AppSidebar({ user }: { user?: SidebarUser }) {
           <SidebarHistory user={user} />
         </SidebarContent>
 
-        <SidebarFooter>
-          {user && <SidebarUserNav user={user} />}
-        </SidebarFooter>
+        <SidebarFooter>{user && <SidebarUserNav user={user} />}</SidebarFooter>
       </Sidebar>
 
-      <AlertDialog
-        open={showDeleteAllDialog}
-        onOpenChange={setShowDeleteAllDialog}
-      >
+      <AlertDialog onOpenChange={setShowDeleteAllDialog} open={showDeleteAllDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete all chats?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete all your
-              chats and remove them from our servers.
+              This action cannot be undone. This will permanently delete all your chats and remove them from our servers.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteAll}>
-              Delete All
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleDeleteAll}>Delete All</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

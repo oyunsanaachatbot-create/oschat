@@ -17,9 +17,7 @@ export function createSupabaseServerClient() {
             cookiesToSet.forEach(({ name, value, options }) => {
               cookieStore.set(name, value, options);
             });
-          } catch {
-            // Server Actions / Route Handlers дээр л cookie set ажиллана.
-          }
+          } catch {}
         },
       },
     }

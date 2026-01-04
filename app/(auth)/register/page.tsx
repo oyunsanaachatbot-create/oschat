@@ -67,7 +67,7 @@ export default function Page() {
         });
         setIsGoogleLoading(false);
       }
-      // Амжилттай бол redirect хийгдэнэ
+      // success -> redirect
     } catch {
       toast({
         type: "error",
@@ -88,19 +88,29 @@ export default function Page() {
         </div>
 
         <AuthForm action={handleSubmit} defaultEmail={email}>
-          {/* Email+password submit (хэвээр) */}
-          <SubmitButton isSuccessful={isSuccessful}>Sign Up</SubmitButton>
-
-          {/* Google button — яг адил хэмжээ/стиль */}
+          {/* Google button */}
           <SubmitButton
             isSuccessful={false}
+            type="button"
             onClick={(e) => {
               e.preventDefault();
               handleGoogleSignUp();
             }}
             disabled={isGoogleLoading}
+            className="w-full"
           >
             {isGoogleLoading ? "Signing up..." : "Continue with Google"}
+          </SubmitButton>
+
+          <div className="flex items-center gap-4">
+            <div className="h-px flex-1 bg-border" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <div className="h-px flex-1 bg-border" />
+          </div>
+
+          {/* Email+password submit */}
+          <SubmitButton isSuccessful={isSuccessful} className="w-full">
+            Sign Up
           </SubmitButton>
 
           <p className="mt-4 text-center text-gray-600 text-sm dark:text-zinc-400">

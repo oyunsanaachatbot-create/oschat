@@ -11,15 +11,22 @@ export type AppSession = {
   };
 };
 
-export async function auth(): Promise<AppSession> {
+// ✅ Логин биш бол null буцаана (uuid биш "guest" гэж DB рүү цохихгүй)
+export async function auth(): Promise<AppSession | null> {
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-  const user = data.user;
+  const { data, error } = await supabase.auth.getUser();
 
-  if (!user) {
-    return { user: { id: "guest", email: null, type: "guest" } };
-  }
+  if (error || !data?.user) return null;
 
-  // Login хэрэглэгчийг "regular" гэж үзнэ
-  return { user: { id: user.id, email: user.email ?? null, type: "regular" } };
+  // хүсвэл user_metadata.type-оос авч болно, үгүй бол regular
+  const metaType = (data.user.user_metadata as any)?.type;
+  const type: UserType = metaType === "guest" ? "guest" : "regular";
+
+  return {
+    user: {
+      id: data.user.id,
+      email: data.user.email ?? null,
+      type,
+    },
+  };
 }

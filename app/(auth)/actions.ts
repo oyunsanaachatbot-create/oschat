@@ -66,14 +66,17 @@ export const register = async (
 
     if (error) {
       const msg = (error.message || "").toLowerCase();
-      if (msg.includes("already") || msg.includes("exists") || msg.includes("registered")) {
+      if (
+        msg.includes("already") ||
+        msg.includes("registered") ||
+        msg.includes("exists")
+      ) {
         return { status: "user_exists" };
       }
       return { status: "failed" };
     }
 
-    // Email confirm ON байж болно
-    if (!data.user && !data.session) return { status: "success" };
+    if (!data.user) return { status: "failed" };
     return { status: "success" };
   } catch (error) {
     if (error instanceof z.ZodError) return { status: "invalid_data" };
@@ -81,34 +84,34 @@ export const register = async (
   }
 };
 
-export const signInWithGoogle = async (): Promise<{ url?: string }> => {
-  try {
-    const supabase = await createSupabaseServerClient();
+export async function signInWithGoogle() {
+  const supabase = await createSupabaseServerClient();
 
-    const baseUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+  // Vercel дээр зөв URL үүсгэх
+  const siteUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.NEXT_PUBLIC_VERCEL_URL
+      ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}`
+      : "http://localhost:3000");
 
-    const redirectTo = baseUrl ? `${baseUrl}/auth/callback` : undefined;
+  const redirectTo = `${siteUrl}/auth/callback`;
 
-    const { data, error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: redirectTo ? { redirectTo } : undefined,
-    });
+  const { data, error } = await supabase.auth.signInWithOAuth({
+    provider: "google",
+    options: {
+      redirectTo,
+      // Google account chooser гаргана
+      queryParams: { prompt: "select_account" },
+    },
+  });
 
-    if (error) return {};
-    return { url: data.url };
-  } catch {
-    return {};
-  }
-};
+  if (error || !data.url) return { ok: false as const };
+  return { ok: true as const, url: data.url };
+}
 
-export const signOut = async (): Promise<{ ok: boolean }> => {
-  try {
-    const supabase = await createSupabaseServerClient();
-    await supabase.auth.signOut();
-    return { ok: true };
-  } catch {
-    return { ok: false };
-  }
-};
+export async function signOutAction() {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signOut();
+  if (error) return { ok: false as const };
+  return { ok: true as const };
+}

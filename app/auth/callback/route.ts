@@ -10,13 +10,7 @@ export async function GET(request: Request) {
   }
 
   const supabase = await createSupabaseServerClient();
-
-  // OAuth code -> session cookie болгоно
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
-
-  if (error) {
-    return NextResponse.redirect(new URL("/login?error=oauth", url.origin));
-  }
+  await supabase.auth.exchangeCodeForSession(code);
 
   return NextResponse.redirect(new URL("/", url.origin));
 }

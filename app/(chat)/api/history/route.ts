@@ -18,10 +18,8 @@ export async function GET(request: NextRequest) {
   }
 
   const session = await auth();
-
-  // ✅ Guest үед DB рүү орохгүй — sidebar “Login…” message-ээ өөрөө харуулна
-  if (!session?.user?.id) {
-    return Response.json({ chats: [], hasMore: false });
+  if (!session?.user) {
+    return new ChatSDKError("unauthorized:chat").toResponse();
   }
 
   const chats = await getChatsByUserId({
@@ -36,8 +34,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE() {
   const session = await auth();
-
-  if (!session?.user?.id) {
+  if (!session?.user) {
     return new ChatSDKError("unauthorized:chat").toResponse();
   }
 

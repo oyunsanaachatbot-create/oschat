@@ -24,11 +24,14 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
 async function SidebarWrapper({ children }: { children: React.ReactNode }) {
   const [session, cookieStore] = await Promise.all([auth(), cookies()]);
+
+  // ✅ Анхны логик руу буцаав: sidebar_state !== "true" үед collapsed гэж үзнэ
   const isCollapsed = cookieStore.get("sidebar_state")?.value !== "true";
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-    <AppSidebar user={session?.user ?? undefined} />
+      {/* ✅ Давхардсан AppSidebar-ийг авч, нэг л удаа render хийнэ */}
+      <AppSidebar user={session?.user ?? undefined} />
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
   );

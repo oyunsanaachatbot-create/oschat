@@ -19,7 +19,7 @@ export async function createSupabaseServerClient() {
             cookieStore.set(name, value, options);
           }
         } catch {
-          // RSC / edge дээр заримдаа set ажиллахгүй байж болно — үл тооно
+          // Server Components дээр set хийх боломжгүй үе байдаг — ignore
         }
       },
     },

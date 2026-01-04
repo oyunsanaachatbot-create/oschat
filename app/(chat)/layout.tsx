@@ -28,7 +28,8 @@ async function SidebarWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarProvider defaultOpen={!isCollapsed}>
-      <AppSidebar user={session?.user} />
+    <AppSidebar user={session?.user ?? undefined} />
+<AppSidebar user={session?.user ?? undefined} />
       <SidebarInset>{children}</SidebarInset>
     </SidebarProvider>
   );

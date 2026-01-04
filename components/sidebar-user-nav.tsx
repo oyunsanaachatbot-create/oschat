@@ -32,12 +32,12 @@ export function SidebarUserNav() {
   const router = useRouter();
   const { setTheme, resolvedTheme } = useTheme();
 
-  const [status, setStatus] = useState<"loading" | "authenticated" | "unauthenticated">(
-    "loading"
-  );
+  const [status, setStatus] = useState<
+    "loading" | "authenticated" | "unauthenticated"
+  >("loading");
   const [user, setUser] = useState<MinimalUser | null>(null);
 
-  // Supabase user-г client дээрээс авч байна
+  // Supabase user-г client дээрээс уншина
   useEffect(() => {
     let mounted = true;
 
@@ -84,7 +84,7 @@ export function SidebarUserNav() {
       return;
     }
 
-    // Guest гэж тооцоод login руу явуулна
+    // Guest эсвэл login хийгдээгүй бол /login руу
     if (status !== "authenticated" || !user || isGuest) {
       router.push("/login");
       return;
@@ -94,7 +94,6 @@ export function SidebarUserNav() {
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
-      // UI refresh хийхэд хамгийн найдвартай нь
       window.location.href = "/";
     } catch {
       toast({
@@ -132,7 +131,9 @@ export function SidebarUserNav() {
                   alt={user?.email ?? "User Avatar"}
                   className="rounded-full"
                   height={24}
-                  src={`https://avatar.vercel.sh/${encodeURIComponent(avatarSeed)}`}
+                  src={`https://avatar.vercel.sh/${encodeURIComponent(
+                    avatarSeed
+                  )}`}
                   width={24}
                 />
                 <span className="truncate" data-testid="user-email">

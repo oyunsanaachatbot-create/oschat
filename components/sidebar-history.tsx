@@ -1,12 +1,14 @@
 "use client";
 
+// 1️⃣ БҮХ import-ууд
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
-import type { User } from "next-auth";
+import type { UserType } from "@/app/(auth)/auth";
 import { useState } from "react";
 import { toast } from "sonner";
 import useSWRInfinite from "swr/infinite";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -17,16 +19,25 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
 import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+
 import type { Chat } from "@/lib/db/schema";
 import { fetcher } from "@/lib/utils";
 import { LoaderIcon } from "./icons";
 import { ChatItem } from "./sidebar-history-item";
+
+// 2️⃣ import БҮРЭН ДУУССАНЫ ДАРАА export type
+export type SidebarUser = {
+  id: string;
+  email: string | null;
+  type: UserType;
+};
 
 type GroupedChats = {
   today: Chat[];
